@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@types/amqplib": "^0.5.13",
+    "@tychota/amqplib-plus": "^0.0.27",
+    "prettier": "^1.18.2",
+    "ts-node": "^8.4.1",
+    "typescript": "^3.6.3"
+  }
+}

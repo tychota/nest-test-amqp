@@ -1,0 +1,123 @@
+# https://docs.docker.com/compose/compose-file/
+version: "3.6"
+
+# https://docs.docker.com/compose/compose-file/#networks
+networks:
+  rabbitmq-prometheus:
+
+# https://docs.docker.com/compose/compose-file/#volumes
+volumes:
+  rabbitmq-prometheus_prometheus:
+  rabbitmq-prometheus_grafana:
+
+services:
+  grafana:
+    # https://hub.docker.com/r/grafana/grafana/tags
+    image: grafana/grafana:6.4.1
+    ports:
+      - "3000:3000"
+    networks:
+      - "rabbitmq-prometheus"
+    volumes:
+      - rabbitmq-prometheus_grafana:/var/lib/grafana
+      - ./grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/rabbitmq.yaml
+      - ./grafana/datasources.yml:/etc/grafana/provisioning/datasources/prometheus.yaml
+      - ./grafana/dashboards/:/dashboards/
+    environment:
+      # https://grafana.com/plugins/flant-statusmap-panel
+      # https://grafana.com/plugins/grafana-piechart-panel
+      # https://grafana.com/plugins/grafana-polystat-panel
+      # https://grafana.com/plugins/jdbranham-diagram-panel
+      # https://grafana.com/plugins/michaeldmoore-multistat-panel
+      # https://grafana.com/plugins/vonage-status-panel
+      # https://grafana.com/plugins/yesoreyeram-boomtable-panel
+      GF_INSTALL_PLUGINS: "flant-statusmap-panel,grafana-piechart-panel"
+  prometheus:
+    # https://hub.docker.com/r/prom/prometheus/tags
+    image: prom/prometheus:v2.12.0
+    networks:
+      - "rabbitmq-prometheus"
+    ports:
+      - "9090:9090"
+    volumes:
+      - rabbitmq-prometheus_prometheus:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  node-exporter:
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.rootfs=/rootfs"
+      - "--path.sysfs=/host/sys"
+      - "--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)"
+    expose:
+      - 9100
+    # https://hub.docker.com/r/prom/node-exporter/tags
+    image: prom/node-exporter:v0.18.1
+    networks:
+      - "rabbitmq-prometheus"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+  cadvisor:
+    expose:
+      - 8080
+    # https://hub.docker.com/r/google/cadvisor/tags
+    image: google/cadvisor:v0.33.0
+    networks:
+      - "rabbitmq-prometheus"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+  rmq0-qq:
+    &rabbitmq # https://hub.docker.com/r/pivotalrabbitmq/rabbitmq-prometheus/tags
+    image: pivotalrabbitmq/rabbitmq-prometheus:3.9.0-alpha.7-2019.10.02
+    networks:
+      - "rabbitmq-prometheus"
+    ports:
+      - "5679:5672"
+      - "15679:15672"
+      - "15699:15692"
+    # https://unix.stackexchange.com/questions/71940/killing-tcp-connection-in-linux
+    # https://en.wikipedia.org/wiki/Tcpkill
+    # https://www.digitalocean.com/community/tutorials/iptables-essentials-common-firewall-rules-and-commands#block-an-ip-address
+    cap_add:
+      - ALL
+    hostname: rmq0-qq
+    environment:
+      RABBITMQ_ERLANG_COOKIE: rabbitmq-qq
+    volumes:
+      - ./rabbitmq-qq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./rabbitmq-qq-env.conf:/etc/rabbitmq/rabbitmq-env.conf:ro
+      - ./rabbitmq-qq-definitions.json:/etc/rabbitmq/rabbitmq-definitions.json:ro
+      - ./rabbitmq-enabled-plugins.conf:/etc/rabbitmq/enabled_plugins:ro
+  rmq1-qq:
+    <<: *rabbitmq
+    hostname: rmq1-qq
+    ports:
+      - "5680:5672"
+      - "15680:15672"
+      - "15700:15692"
+  rmq2-qq:
+    <<: *rabbitmq
+    hostname: rmq2-qq
+    ports:
+      - "5681:5672"
+      - "15681:15672"
+      - "15701:15692"
+  rmq3-qq:
+    <<: *rabbitmq
+    hostname: rmq3-qq
+    ports:
+      - "5682:5672"
+      - "15682:15672"
+      - "15702:15692"
+  rmq4-qq:
+    <<: *rabbitmq
+    hostname: rmq4-qq
+    ports:
+      - "5683:5672"
+      - "15683:15672"
+      - "15703:15692"
